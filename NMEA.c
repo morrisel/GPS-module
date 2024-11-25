@@ -164,22 +164,10 @@ int decodeRMC(char *RMCbuffer, RMCSTRUCT *rmc)
             case 2: /* Validity ('A' = valid, 'V' = invalid) */
                 rmc->is_data_valid = (token[0] == 'A') ? 1 : 0;
                 break;
-            case 3: /* Latitude */
-                rmc->location.latitude = parse_coordinate(token, rmc->location.NS);
-                break;
-            case 4: /* N/S Indicator */
-                rmc->location.NS = token[0];
-                break;
-            case 5: /* Longitude */
-                rmc->location.longitude = parse_coordinate(token, rmc->location.EW);
-                break;
-            case 6: /* E/W Indicator */
-                rmc->location.EW = token[0];
-                break;
-            case 7: /* Speed over ground in knots */
+            case 3: /* Speed over ground in knots */
                 rmc->speed_knots = atof(token);
                 break;
-            case 8: /* Course over ground */
+            case 4: /* Course over ground */
                 rmc->course = atof(token);
                 break;
         }
