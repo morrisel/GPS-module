@@ -1,7 +1,7 @@
 /*
  * NMEA.h
  *
- * Header file for parsing NMEA sentences into structured data.
+ * Header file for parsing NMEA sentences for GPS data
  */
 
 #ifndef INC_NMEA_H_
@@ -9,82 +9,68 @@
 
 #include <stdint.h>
 
-/* Define TIME structure to hold time data */
-struct TIME 
+// Define TIME structure for storing time information
+typedef struct
 {
-    uint8_t hour;
-    uint8_t min;
-    uint8_t sec;
-};
-#define TIME struct TIME
+    uint32_t time;     
+} TIME;
 
-/* Define LOCATION structure to hold GPS location data */
-struct LOCATION 
+// Define LOCATION structure for storing location information
+typedef struct
 {
-    float latitude;
-    char  NS;
-    float longitude;
-    char  EW;
-};
-#define LOCATION struct LOCATION
+    int32_t latitude; 
+    char NS;
+    int32_t longitude; 
+    char EW;
+} LOCATION;
 
-/* Define ALTITUDE structure to hold altitude data */
-struct ALTITUDE 
+// Define ALTITUDE structure for storing altitude information
+typedef struct
 {
-    float altitude;
-    char  unit;
-};
-#define ALTITUDE struct ALTITUDE
+    //float altitude;
+    int32_t altitude;  
+    char unit;
+} ALTITUDE;
 
-/* Define DATE structure to hold date data */
-struct DATE 
+// Define DATE structure for storing date information
+typedef struct
 {
-    uint8_t   day;
-    uint8_t   month;
-    uint16_t  year;
-};
-#define DATE struct DATE
+    uint8_t day;
+    uint8_t month;
+    uint16_t year;
+} DATE;
 
-/* Define GGASTRUCT for holding GGA sentence data */
-struct GGASTRUCT 
+// Define GGASTRUCT for storing parsed GGA sentence data
+typedef struct
 {
-    LOCATION    location;
-    TIME        time;
-    int         is_fix_valid;
-    ALTITUDE    altitude;
-    int         num_of_sat;
-};
-#define GGASTRUCT struct GGASTRUCT
+    LOCATION location;  
+    TIME time;          
+    ALTITUDE altitude;  
+    int8_t is_fix_valid;
+    uint8_t num_of_sat; 
+} GGASTRUCT;
 
-/* Define RMCSTRUCT for holding RMC sentence data */
-struct RMCSTRUCT 
+// Define RMCSTRUCT for storing parsed RMC sentence data
+typedef struct
 {
-    DATE    date;
-    float   speed_knots;
-    float   course;
-    int     is_data_valid;
-};
-#define RMCSTRUCT struct RMCSTRUCT
+    DATE date;
+    float speed_knots;
+    float course;
+    int is_data_valid;
+} RMCSTRUCT;
 
-/* Define GPSSTRUCT for holding all GPS data */
-struct GPSSTRUCT 
+// Define GPSSTRUCT for storing both GGA and RMC data
+typedef struct
 {
     GGASTRUCT ggastruct;
     RMCSTRUCT rmcstruct;
-};
-#define GPSSTRUCT struct GPSSTRUCT
+} GPSSTRUCT;
 
-/* Function to convert string to float */
+// Public function declarations
 float simple_atof(const char* str);
-
-/* Functions to decode NMEA sentences */
 int decodeGGA(char *GGAbuffer, GGASTRUCT *gga);
 int decodeRMC(char *RMCbuffer, RMCSTRUCT *rmc);
-
-/* Function to initialize a GPSSTRUCT */
 void initGPS(GPSSTRUCT *gps);
-
-/* Function to populate GPS data from GGA and RMC sentences */
 int populateGPSData(char *ggaSentence, char *rmcSentence, GPSSTRUCT *gps);
 
 #endif /* INC_NMEA_H_ */
