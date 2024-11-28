@@ -67,6 +67,9 @@ typedef struct
 } GPSSTRUCT;
 
 // Public function declarations
+/* <d1 */
+int32_t simple_atof_fixed(const char* str, int scale);
+/* d1> */
 float simple_atof(const char* str);
 int decodeGGA(char *GGAbuffer, GGASTRUCT *gga);
 int decodeRMC(char *RMCbuffer, RMCSTRUCT *rmc);
