@@ -32,6 +32,56 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <ctype.h>      // for check symbols
+
+
+int32_t atof_fixed(const char *str, int scale)
+{                                                                   // Convert string to fixed-point integer
+    int32_t result       = 0;                                       // Holds the final result
+    int     sign         = 1;                                       // Assume positive number by default
+    int     scale_factor = scale;                                   // Scale factor for fractional part
+
+    // Skip leading spaces
+    while (*str == ' ')
+    {
+        str++;
+    }
+
+    // Check for sign
+    sign = (*str == '-') ? -1 : 1;
+    if (*str == '-' || *str == '+') str++;
+
+    // Process the integer part
+    while (isdigit((unsigned char)*str))
+    {
+        result = result * 10 + (*str - '0');
+        str++;
+    }
+
+    // Handle fractional part if decimal point is found
+    if (*str == '.')
+    {
+        str++;                                                      // Skip the decimal point
+        // Process digits after decimal, adjusting scale
+        while (isdigit((unsigned char)*str) && scale_factor > 1)    // reduce scale and move to next character
+        {
+            result = result * 10 + (*str - '0');
+            scale_factor /= 10;
+            str++;
+        }
+    }
+
+    // Apply remaining scale if no fractional digits
+    while (scale_factor > 1)
+    {
+        result *= 10;
+        scale_factor /= 10;
+    }
+
+    return result * sign;
+}
+
+
 /*
  * parse_coordinate - Parses a coordinate from the NMEA format.
  *
