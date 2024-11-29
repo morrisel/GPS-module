@@ -24,7 +24,6 @@
  *  Created on: Nov 20, 2024
  *      Author: morris
  *
- *
  */
 
 #include "NMEA.h"
@@ -35,7 +34,7 @@
 #include <ctype.h>      // for check symbols
 
 
-int32_t atof_fixed(const char *str, int scale)
+int32_t nmea_atof_fixed(const char *str, int scale)
 {                                                                   // Convert string to fixed-point integer
     int32_t result       = 0;                                       // Holds the final result
     int     sign         = 1;                                       // Assume positive number by default
