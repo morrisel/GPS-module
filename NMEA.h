@@ -9,20 +9,34 @@
 
 #include <stdint.h>
 
-// Define TIME structure for storing time information
-typedef struct
-{
-    uint32_t time;     
-} TIME;
 
-// Define LOCATION structure for storing location information
+// <AB0-1:
+// LOCATION structure with fixed-point representation
 typedef struct
-{
-    int32_t latitude; 
-    char NS;
-    int32_t longitude; 
-    char EW;
+{                               //  times 1000000 values --->  (1.234567° -> 1234567)
+    int32_t     latitude;       //  4 byte     Latitude  * 1e7 (10^6) (example: 12.345678 -> 123456780)
+    int32_t     longitude;      //  4 byte     Longitude * 1e7 (10^6)
+    char        NS;             //  1 byte
+    char        EW;             //  1 byte
+    uint16_t    padding;        //             bytes aligment up-to 4 byte
 } LOCATION;
+
+
+// TIME structure packed into 32-bit
+typedef struct
+{   
+    uint32_t time;          // HHMMSS format in uint32_t (example, 123456 for 12:34:56)
+                            //                                     |||||| 
+                            //                                     HHMMSS 
+                            // 
+                            // uint8_t   hour = (time >> 16) & 0xFF;
+                            // uint8_t   min  = (time >> 8)  & 0xFF;
+                            // uint8_t   sec  = time         & 0xFF;
+} TIME;
+// :AB0-1>
+
+
+
 
 // Define ALTITUDE structure for storing altitude information
 typedef struct
@@ -67,11 +81,14 @@ typedef struct
 } GPSSTRUCT;
 
 // Public function declarations
-/* <d1 */
-int32_t simple_atof_fixed(const char* str, int scale);
-/* d1> */
-float simple_atof(const char* str);
+/* <t1: */
+int32_t nmea_atof_fixed(const char* str, int scale);
+/* :t1> */
+
+/* <d2: */
 int decodeGGA(char *GGAbuffer, GGASTRUCT *gga);
+/* :d2> */
+
 int decodeRMC(char *RMCbuffer, RMCSTRUCT *rmc);
 void initGPS(GPSSTRUCT *gps);
 int populateGPSData(char *ggaSentence, char *rmcSentence, GPSSTRUCT *gps);
