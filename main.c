@@ -1,4 +1,5 @@
 /* main.c ---> for tests */
+/* gcc -Wall -Wextra -Wconversion -msoft-float -O0 -g NMEA.c main.c -o out_NMEA */
 
 #include <stdio.h>
 #include <stdlib.h>
