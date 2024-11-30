@@ -18,18 +18,21 @@ typedef struct
   volatile unsigned int tail;
 } ring_buffer;
 
-// <d1:
+
 /* Initialize the ring buffer */
 void Ringbuf_init(void);
+
+
+// <d1:
+/* reads the data in the rx_buffer and increment the tail count in rx_buffer */
+int Uart_read(void);
 // :d1>
 
 
 
-/********************************************************************/
 
 
-/* reads the data in the rx_buffer and increment the tail count in rx_buffer */
-int Uart_read(void);
+
 
 /* writes the data to the tx_buffer and increment the head count in tx_buffer */
 void Uart_write(int c);
