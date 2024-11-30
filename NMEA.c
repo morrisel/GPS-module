@@ -1,128 +1,104 @@
 /*
- * NMEA.c
- *
- * This file provides functions for decoding NMEA sentences (GGA and RMC) into
- * structured data representations. It includes functions for parsing GPS data
- * and converting them into human-readable and usable structures for further
- * processing in the system.
- *
- * Supported NMEA sentences:
- * - GGA (Global Positioning System Fix Data)
- * - RMC (Recommended Minimum Specific GPS/Transit Data)
- *
- * Structures:
- * - GGASTRUCT: Holds GGA sentence data (time, location, altitude, fix validity, number of satellites)
- * - RMCSTRUCT: Holds RMC sentence data (date, speed, course, validity)
- * - GPSSTRUCT: Combines GGASTRUCT and RMCSTRUCT for complete GPS information
- *
- * Functions:
- * - decodeGGA: Parses a GGA sentence and populates a GGASTRUCT.
- * - decodeRMC: Parses an RMC sentence and populates an RMCSTRUCT.
- * - initGPS: Initializes a GPSSTRUCT to default values.
- * - populateGPSData: Fills a GPSSTRUCT by parsing both GGA and RMC sentences.
- *
- *  Created on: Nov 20, 2024
- *      Author: morris
- *
+ * NMEA.c - Implementation of NMEA sentence parsing for GPS data.
+ * Provides functions for parsing GGA sentences and converting
+ * them into structured data.
  */
 
 #include "NMEA.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+//#include <stdint.h>
+//#include <ctype.h>      // for check symbols,  isdigit
 
-#include <ctype.h>      // for check symbols
+// Macros for various precisions
+#define FIXED_PRECISION_2   100       // For precision up to 2 decimal places
+#define FIXED_PRECISION_4   10000     // For precision up to 4 decimal places
+#define FIXED_PRECISION_6   1000000   // For precision up to 6 decimal places
 
 
+/**
+ * Converts a numeric string to a fixed-point integer with the specified scale.
+ * @param str   The numeric string (e.g., "123.456").
+ * @param scale The scale factor for fixed-point conversion (e.g., 1000 for 3 decimal places).
+ * @return      Fixed-point representation of the number as an int32_t.
+ */
 int32_t nmea_atof_fixed(const char *str, int scale)
 {                                                                   // Convert string to fixed-point integer
-    int32_t result       = 0;                                       // Holds the final result
-    int     sign         = 1;                                       // Assume positive number by default
-    int     scale_factor = scale;                                   // Scale factor for fractional part
+    int32_t result   = 0;                                           // Holds the final result
+    int     sign     = 1;                                           // Assume positive number by default
 
     // Skip leading spaces
     while (*str == ' ')
     {
-        str++;
+        str++;                                          
     }
 
     // Check for sign
-    sign = (*str == '-') ? -1 : 1;
-    if (*str == '-' || *str == '+') str++;
+    if  (*str == '-')
+    {
+        sign = -1;                                      
+        str++;                                          
+    }
+    else if(*str == '+')
+    {
+        str++;                                          
+    }
 
     // Process the integer part
-    while (isdigit((unsigned char)*str))
+    while (*str >= '0' && *str <= '9')
     {
-        result = result * 10 + (*str - '0');
-        str++;
+        result = result * 10 + (*str - '0');            
+        str++;                                          
     }
 
     // Handle fractional part if decimal point is found
     if (*str == '.')
     {
         str++;                                                      // Skip the decimal point
+        int     scale_factor = scale;                               // Scale factor for fractional part
         // Process digits after decimal, adjusting scale
-        while (isdigit((unsigned char)*str) && scale_factor > 1)    // reduce scale and move to next character
+        while (*str >= '0' && *str <= '9' && scale_factor > 1)      // reduce scale and move to next character
         {
-            result = result * 10 + (*str - '0');
-            scale_factor /= 10;
-            str++;
+            result = result * 10 + (*str - '0');        
+            scale_factor /= 10;                         
+            str++;                                      
         }
     }
 
     // Apply remaining scale if no fractional digits
-    while (scale_factor > 1)
+    while (scale > 1)
     {
-        result *= 10;
-        scale_factor /= 10;
+        result *= 10;                                   
+        scale /= 10;                             
     }
 
-    return result * sign;
+    return result * sign;                               
 }
 
 
 /*
  * parse_coordinate - Parses a coordinate from the NMEA format.
  *
- * This function takes a coordinate string in the NMEA format (DDMM.MMMM)
- * and converts it into decimal degrees. The direction (N/S, E/W) is used
- * to apply a correction to the sign of the coordinate.
- *
- * Arguments:
- *   str - Coordinate string in NMEA format (DDMM.MMMM).
- *   direction - Direction indicator ('N', 'S', 'E', 'W').
- *
- * Returns:
- *   The coordinate as a float in decimal degrees.
  */
-static float parse_coordinate(const char *str, char direction) 
+static int32_t parse_coordinate(const char *str, char direction, int scale) 
 {
-    float degrees = atof(str);
-    int int_degrees = (int)(degrees / 100);
-    float minutes = degrees - (int_degrees * 100);
-    float decimal_degrees = int_degrees + (minutes / 60.0);
+    int32_t degrees         = nmea_atof_fixed(str, scale);     // convert string to fixed point
+    int32_t int_degrees     = degrees / 100;
+    int32_t minutes         = degrees - (int_degrees * 100);
+    int32_t decimal_degrees = int_degrees + (int32_t)(minutes / 60.0); //---> <d1:loss data>
 
+    if (!str || *str == '\0') return 0;
     /* Apply direction correction (negative for South or West) */
-    if (direction == 'S' || direction == 'W') 
-    {
+    if (direction == 'S' || direction == 'W')
         decimal_degrees = -decimal_degrees;
-    }
+
     return decimal_degrees;
 }
 
 /*
  * decodeGGA - Decodes the GGA sentence into a GGASTRUCT.
- *
- * This function parses a GGA sentence, extracting the time, latitude,
- * longitude, altitude, fix validity, and the number of satellites from
- * the comma-separated fields.
- *
- * Arguments:
- *   GGAbuffer - The input GGA sentence as a string.
- *   gga - Pointer to a GGASTRUCT to be populated.
- *
- * Returns:
- *   0 on success, -1 on failure (e.g., malformed sentence).
+ * 
  */
 int decodeGGA(char *GGAbuffer, GGASTRUCT *gga) 
 {
@@ -132,62 +108,92 @@ int decodeGGA(char *GGAbuffer, GGASTRUCT *gga)
         return -1; /* Invalid input */
     }
 
-    char *token = strtok(GGAbuffer, ",");
-    int field_num = 0;
+    int  field_num = 0;
+    char *ptr      = GGAbuffer;
+    char *start    = ptr;
+    char *token    = strtok(GGAbuffer, ",");
+
+    printf("Parsing GGA sentence: %s\n", start);
 
     /* Parse each comma-separated field */
+    // Iterate through the GGA sentence
     while (token != NULL) 
     {
         switch (field_num) 
         {
             case 1: /* UTC Time (HHMMSS) */
-                gga->time.hour = (token[0] - '0') * 10 + (token[1] - '0');
-                gga->time.min = (token[2] - '0') * 10 + (token[3] - '0');
-                gga->time.sec = (token[4] - '0') * 10 + (token[5] - '0');
+                if (field_num == 6) // checking if the field size is 6 symbols
+                {
+                    uint8_t hour = (uint8_t)((token[0] - '0') * 10 + (token[1] - '0'));
+                    uint8_t min  = (uint8_t)((token[2] - '0') * 10 + (token[3] - '0'));
+                    uint8_t sec  = (uint8_t)((token[4] - '0') * 10 + (token[5] - '0'));
+
+                    // settings value format HHMMSS
+                    gga->time.time = (uint32_t)(hour << 16) | (uint32_t)(min << 8) | (uint32_t)sec;
+                }
                 break;
             case 2: /* Latitude */
-                gga->location.latitude = parse_coordinate(token, gga->location.NS);
-                break;
+                {
+                    if (token && token[0] != '\0')
+                    {
+                        // convert the latitude with 4 size floating
+                        gga->location.latitude = parse_coordinate(token, gga->location.NS, FIXED_PRECISION_4);
+                    }
+                    break;
+                }
             case 3: /* N/S Indicator */
-                gga->location.NS = token[0];
-                break;
+                {
+                    // Get the latitude indicator
+                    gga->location.NS = token[0];
+                    break;
+                }
             case 4: /* Longitude */
-                gga->location.longitude = parse_coordinate(token, gga->location.EW);
-                break;
+                {
+                    if (token && token[0] != '\0')
+                    {
+                        // Use parse_coordinate to convert longitude
+                        gga->location.longitude = parse_coordinate(token, gga->location.EW, FIXED_PRECISION_4);
+                    }
+                    break;
+                }
             case 5: /* E/W Indicator */
-                gga->location.EW = token[0];
-                break;
+                {
+                    // Record the longitude direction indicator
+                    gga->location.EW = token[0];
+                    break;
+                }
             case 6: /* Fix Validity */
-                gga->is_fix_valid = atoi(token);
-                break;
+                {
+                    gga->is_fix_valid = nmea_atof_fixed(token,FIXED_PRECISION_2) ? 1 : 0;
+                    break;
+                }
             case 7: /* Number of Satellites */
-                gga->num_of_sat = atoi(token);
-                break;
+                {
+                    int32_t numsat_val = nmea_atof_fixed(token,FIXED_PRECISION_2);
+                    gga->numsat = (numsat_val > 127) ? 127 : (uint8_t)numsat_val;
+                    break;
+                }
             case 9: /* Altitude */
-                gga->altitude.altitude = atof(token);
-                break;
+                {
+                    gga->altitude.altitude = nmea_atof_fixed(token, FIXED_PRECISION_4);
+                    break;
+                }
             case 10: /* Altitude Unit */
-                gga->altitude.unit = token[0];
-                break;
+                {
+                    gga->altitude.unit = token[0];
+                    break;
+                }
         }
         token = strtok(NULL, ",");
         field_num++;
     }
-    return 0; /* Success */
+
+    return 0;
 }
 
 /*
  * decodeRMC - Decodes the RMC sentence into an RMCSTRUCT.
  *
- * This function parses an RMC sentence, extracting the time, validity,
- * latitude, longitude, speed, course, and date from the comma-separated fields.
- *
- * Arguments:
- *   RMCbuffer - The input RMC sentence as a string.
- *   rmc - Pointer to an RMCSTRUCT to be populated.
- *
- * Returns:
- *   0 on success, -1 on failure (e.g., malformed sentence).
  */
 int decodeRMC(char *RMCbuffer, RMCSTRUCT *rmc) 
 {
@@ -206,31 +212,38 @@ int decodeRMC(char *RMCbuffer, RMCSTRUCT *rmc)
         switch (field_num) 
         {
             case 1: /* UTC Time (HHMMSS) */
-                rmc->date.day = (token[0] - '0') * 10 + (token[1] - '0');
-                rmc->date.month = (token[2] - '0') * 10 + (token[3] - '0');
-                rmc->date.year = 2000 + (token[4] - '0') * 10 + (token[5] - '0'); /* Adjust for 21st century */
-                break;
+                {
+                    rmc->date.day = (uint8_t)((token[0] - '0') * 10 + (token[1] - '0'));
+                    rmc->date.month = (uint8_t)((token[2] - '0') * 10 + (token[3] - '0'));
+                    /* Adjust for 21st century */
+                    rmc->date.year = (uint16_t)(2000 + (token[4] - '0') * 10 + (token[5] - '0'));
+                    break;
+                }
             case 2: /* Validity ('A' = valid, 'V' = invalid) */
-                rmc->is_data_valid = (token[0] == 'A') ? 1 : 0;
-                break;
+                {
+                    rmc->is_data_valid = (token[0] == 'A') ? 1 : 0;
+                    break;
+                }
             case 3: /* Speed over ground in knots */
-                rmc->speed_knots = atof(token);
-                break;
+                {
+                    rmc->speed_knots = nmea_atof_fixed(token,FIXED_PRECISION_2 );
+                    break;
+                }
             case 4: /* Course over ground */
-                rmc->course = atof(token);
-                break;
+                {
+                    rmc->course = nmea_atof_fixed(token,FIXED_PRECISION_4 );
+                    break;
+                }
         }
         token = strtok(NULL, ",");
         field_num++;
     }
-    return 0; /* Success */
+    return 0; 
 }
 
 /*
  * initGPS - Initializes a GPSSTRUCT to default values.
  *
- * Arguments:
- *   gps - Pointer to a GPSSTRUCT to be initialized.
  */
 void initGPS(GPSSTRUCT *gps)
 {
@@ -240,16 +253,6 @@ void initGPS(GPSSTRUCT *gps)
 /*
  * populateGPSData - Populates a GPSSTRUCT with data from GGA and RMC sentences.
  *
- * This function decodes a GGA sentence and an RMC sentence and fills a
- * GPSSTRUCT with the parsed data.
- *
- * Arguments:
- *   ggaSentence - The GGA sentence as a string.
- *   rmcSentence - The RMC sentence as a string.
- *   gps - Pointer to the GPSSTRUCT to be populated.
- *
- * Returns:
- *   0 on success, -1 if any decoding fails.
  */
 int populateGPSData(char *ggaSentence, char *rmcSentence, GPSSTRUCT *gps)
 {
@@ -264,6 +267,6 @@ int populateGPSData(char *ggaSentence, char *rmcSentence, GPSSTRUCT *gps)
         return -1; /* Failed to parse RMC data */
     }
 
-    return 0; /* Success */
+    return 0;
 }
 
