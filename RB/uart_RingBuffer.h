@@ -22,20 +22,21 @@ typedef struct
 /* Initialize the ring buffer */
 void Ringbuf_init(void);
 
-
-// <d1:
 /* reads the data in the rx_buffer and increment the tail count in rx_buffer */
 int Uart_read(void);
+
+
+
+
+
+
+
+// <d1:
+/* writes the data to the tx_buffer and increment the head count in tx_buffer */
+void Uart_write(int c);
 // :d1>
 
 
-
-
-
-
-
-/* writes the data to the tx_buffer and increment the head count in tx_buffer */
-void Uart_write(int c);
 
 /* function to send the string to the uart */
 void Uart_sendstring(const char *s);
