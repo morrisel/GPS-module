@@ -143,3 +143,70 @@ int Uart_read(void)
 }
 
 
+/* schema of the ring buffer:
+ *
+ *
+ *                 0                                      1
+ *         -----------------                      -----------------
+ *        |                 |                    |                 |
+ *        |  tail  |  head  |    ----------->    |  tail  |  head  |
+ *        |                 |                    |                 |
+ *         -----------------                      -----------------
+ *                     head-->|     buffer     |<--tail
+ *                      ^        [0-9][A-Za-z]
+ *                      |
+ *                  (Ring buffer: after 512 goes back to 0)
+ *                _tx_buffer  0 --------------> 512
+ *
+ *                _rx_buffer
+ *
+ * After reaching the end of the buffer (512), the pointers wrap back to the beginning (0).
+ *
+ */
+/* writes a single character to the uart and increments head */
+void Uart_write(int c)
+{
+    if (c < 0 || c > 255) return; // Validate input
+
+    // calculate the new value of head
+    int i = (unsigned int)(_tx_buffer->head + 1) % UART_BUFFER_SIZE;
+
+    while (i == _tx_buffer->tail);  // Wait if the buffer is full
+
+    // variation 1: timeout mechanism
+    //    uint32_t start_time = HAL_GetTick(); // Start time
+    //    while (i == _tx_buffer->tail)
+    //    {
+    //        if ((HAL_GetTick() - start_time) > TIMEOUT_DEF)
+    //        {
+    //            return; // Exit after timeout
+    //        }   
+    //    }
+    //  
+    // variation 2: handle buffer overflow
+    //    // if head reaches tail, it indicates a buffer overflow
+    //    if (i == _tx_buffer->tail)      // buffer overflow
+    //    {
+    //        return;
+    //    }
+
+    // store the character in the buffer
+    _tx_buffer->buffer[_tx_buffer->head] = (uint8_t)c;    // Write character
+
+    // update the head pointer
+    _tx_buffer->head = i;
+
+
+    __HAL_UART_ENABLE_IT(uart, UART_IT_TXE); // Enable UART transmission interrupt
+
+}
+
+
+
+
+
+
+
+
+
+
