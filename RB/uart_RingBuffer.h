@@ -25,21 +25,18 @@ void Ringbuf_init(void);
 /* reads the data in the rx_buffer and increment the tail count in rx_buffer */
 int Uart_read(void);
 
-
-
-
+/* writes the data to the tx_buffer and increment the head count in tx_buffer */
+void Uart_write(int c);
 
 
 
 // <d1:
-/* writes the data to the tx_buffer and increment the head count in tx_buffer */
-void Uart_write(int c);
+/* function to send the string to the uart */
+void Uart_sendstring(const char *s);
 // :d1>
 
 
 
-/* function to send the string to the uart */
-void Uart_sendstring(const char *s);
 
 /* Print a number with any base
  * base can be 10, 8 etc*/
