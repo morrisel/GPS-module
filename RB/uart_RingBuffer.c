@@ -202,6 +202,35 @@ void Uart_write(int c)
 }
 
 
+// <d1:sr
+//int IsTxBufferFull(void)
+//{
+//    int next_head = (_tx_buffer->head + 1) % UART_BUFFER_SIZE;
+//    return (next_head == _tx_buffer->tail); // Returns 1 if full, 0 otherwise
+//}
+// er:d1>
+/* checks if the new data is available in the incoming buffer */
+int IsDataAvailable(void)
+{   
+    return (uint16_t)(UART_BUFFER_SIZE + _rx_buffer->head - _rx_buffer->tail) % UART_BUFFER_SIZE;
+}
+/* sends the string to the uart */
+void Uart_sendstring (const char *s)
+{   
+    if (s == NULL) return;
+    while(*s) Uart_write(*s++);
+
+    // <d1:si
+    //if (!IsTxBufferFull())
+    //{   
+    //    while(*s) Uart_write(*s++);
+    //}
+    //else
+    //{   
+    //    // Handle the case where the TX buffer is full
+    //}
+    // ei:d1>
+}
 
 
 
