@@ -31,31 +31,35 @@ void Uart_write(int c);
 /* function to send the string to the uart */
 void Uart_sendstring(const char *s);
 
-
-
-
 // <d2:
 /* Print a number with any base, base can be 10, 8 etc */
 void Uart_printbase (long n, uint8_t base);
 // :d2>
 
-
-
-
-
-
-
-
-
 /* Checks if the data is available to read in the rx_buffer */
 int IsDataAvailable(void);
 
 
+
+
+
+
+
+// <d3:
 /* Look for a particular string in the given buffer
  * @return 1, if the string is found and -1 if not found
  * @USAGE:: if (Look_for ("some string", buffer)) do something
  */
 int Look_for (char *str, char *buffertolookinto);
+// :d3>
+
+
+
+
+
+
+
+
 
 /* Copies the required data from a buffer
  * @startString: the string after which the data need to be copied
