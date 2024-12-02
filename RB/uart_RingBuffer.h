@@ -34,12 +34,15 @@ void Uart_sendstring(const char *s);
 
 
 
-
-// <d1:
-/* Print a number with any base
- * base can be 10, 8 etc*/
+// <d2:
+/* Print a number with any base, base can be 10, 8 etc */
 void Uart_printbase (long n, uint8_t base);
-// :d1>
+// :d2>
+
+
+
+
+
 
 
 
