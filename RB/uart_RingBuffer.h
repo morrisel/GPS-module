@@ -22,27 +22,27 @@ typedef struct
 /* Initialize the ring buffer */
 void Ringbuf_init(void);
 
+
 /* reads the data in the rx_buffer and increment the tail count in rx_buffer */
 int Uart_read(void);
+
 
 /* writes the data to the tx_buffer and increment the head count in tx_buffer */
 void Uart_write(int c);
 
+
 /* function to send the string to the uart */
 void Uart_sendstring(const char *s);
+
 
 // <d2:
 /* Print a number with any base, base can be 10, 8 etc */
 void Uart_printbase (long n, uint8_t base);
 // :d2>
 
+
 /* Checks if the data is available to read in the rx_buffer */
 int IsDataAvailable(void);
-
-
-
-
-
 
 
 // <d3:
@@ -52,13 +52,6 @@ int IsDataAvailable(void);
  */
 int Look_for (char *str, char *buffertolookinto);
 // :d3>
-
-
-
-
-
-
-
 
 
 /* Copies the required data from a buffer
@@ -71,6 +64,7 @@ void GetDataFromBuffer (char *startString, char *endString, char *buffertocopyfr
 
 /* Resets the entire ring buffer, the new data will start from position 0 */
 void Uart_flush (void);
+
 
 /* Peek for the data in the Rx Bffer without incrementing the tail count
 * Returns the character
@@ -105,12 +99,12 @@ int Wait_for (char *string);
 void Uart_isr (UART_HandleTypeDef *huart);
 
 
-
 /*** Depreciated For now. This is not needed, try using other functions to meet the requirement ***/
 /* get the position of the given string within the incoming data.
  * It returns the position, where the string ends
  */
 //uint16_t Get_position (char *string);
+
 
 /* once you hit 'enter' (\r\n), it copies the entire string to the buffer*/
 //void Get_string (char *buffer);
