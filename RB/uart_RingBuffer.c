@@ -282,10 +282,10 @@ int Look_for (char *str, char *buffer)
     for (; buffer[i] != '\0'; i++)
     {
         int j = 0;                                                // example:
-        while (str[j] != '\0' && buffer[i+j] == str[j]) { j++; }  //  buffer="hel lo world'\0'"
+        while (str[j] != '\0' && buffer[i+j] == str[j]) { j++; }  //  buffer="hello world'\0'"
                                                                   //  str="hel'\0'"
                                                                   //
-                                                                  //  buff   "hel lo world'\0'"
+                                                                  //  buff   "hello world'\0'"
                                                                   //  str --> ^^^
                                                                   //  ---------> exit
         if (j == str_len)
