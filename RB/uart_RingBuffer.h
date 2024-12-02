@@ -28,19 +28,19 @@ int Uart_read(void);
 /* writes the data to the tx_buffer and increment the head count in tx_buffer */
 void Uart_write(int c);
 
+/* function to send the string to the uart */
+void Uart_sendstring(const char *s);
+
+
+
 
 
 // <d1:
-/* function to send the string to the uart */
-void Uart_sendstring(const char *s);
-// :d1>
-
-
-
-
 /* Print a number with any base
  * base can be 10, 8 etc*/
 void Uart_printbase (long n, uint8_t base);
+// :d1>
+
 
 
 
