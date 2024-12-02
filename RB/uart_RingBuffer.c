@@ -226,17 +226,38 @@ void Uart_sendstring (const char *s)
     // ie:d1>
 }
 
-
 // <d2:br
 /* Print a number with any base, base can be 10, 8 etc */
-void Uart_printbase (long n, uint8_t base)
+void Uart_printbase(long n, uint8_t base)
 {
-    // TODO    
+    if (base < 2 || base > 36) return;  // Invalid base
+
+    char buffer[33];        // Enough to store a 32-bit number in binary (plus null terminator)
+    char *ptr = &buffer[sizeof(buffer) - 1];
+    *ptr = '\0';            // Null terminator for the string
+
+    // Handle negative numbers (only for base 10)
+    int8_t    is_negative   = (n < 0 && base == 10);
+    uint32_t  abs_value     = (n < 0) ? -n : n;
+
+    // Convert number to the given base
+    do
+    {
+        uint32_t remainder = abs_value % base;
+        *--ptr = (remainder < 10) ? (remainder + '0') : (remainder - 10 + 'A'); // Handle 0-9 and A-Z
+        abs_value /= base;
+    } while (abs_value > 0);
+
+    // Add negative sign if needed
+    if (is_negative)
+    {
+        *--ptr = '-';
+    }
+
+    Uart_sendstring(ptr);   // Send string via UART
 }
 // re:d2>
 
-
-
 /* checks if the new data is available in the incoming buffer */
 int IsDataAvailable(void)
 {
@@ -246,331 +267,16 @@ int IsDataAvailable(void)
 
 
 
-
-
-
-
-
-
-
-
-
-
-/* checks if the new data is available in the incoming buffer */
-int IsDataAvailable(void)
-{
-    return (uint16_t)(UART_BUFFER_SIZE + _rx_buffer->head - _rx_buffer->tail) % UART_BUFFER_SIZE;
-}
-
-/* sends the string to the uart
-*/
-void Uart_sendstring (const char *s)
-{
-    while(*s) Uart_write(*s++);
-}
-
-void GetDataFromBuffer (char *startString, char *endString, char *buffertocopyfrom, char *buffertocopyinto)
-{
-    int startStringLength = strlen (startString);
-    int endStringLength   = strlen (endString);
-    int so_far = 0;
-    int indx = 0;
-    int startposition = 0;
-    int endposition = 0;
-
-repeat1:
-    while (startString[so_far] != buffertocopyfrom[indx]) indx++;
-    if (startString[so_far] == buffertocopyfrom[indx])
-    {
-        while (startString[so_far] == buffertocopyfrom[indx])
-        {
-            so_far++;
-            indx++;
-        }
-    }
-
-    if (so_far == startStringLength) startposition = indx;
-    else
-    {
-        so_far =0;
-        goto repeat1;
-    }
-
-    so_far = 0;
-
-repeat2:
-    while (endString[so_far] != buffertocopyfrom[indx]) indx++;
-    if (endString[so_far] == buffertocopyfrom[indx])
-    {
-        while (endString[so_far] == buffertocopyfrom[indx])
-        {
-            so_far++;
-            indx++;
-        }
-    }
-
-    if (so_far == endStringLength) endposition = indx-endStringLength;
-    else
-    {
-        so_far =0;
-        goto repeat2;
-    }
-
-    so_far = 0;
-    indx=0;
-
-    for (int i=startposition; i<endposition; i++)
-    {
-        buffertocopyinto[indx] = buffertocopyfrom[i];
-        indx++;
-    }
-}
-
-void Uart_flush (void)
-{
-    memset(_rx_buffer->buffer,'\0', UART_BUFFER_SIZE);
-    _rx_buffer->head = 0;
-    _rx_buffer->tail = 0;
-}
-
-int Uart_peek()
-{
-    if(_rx_buffer->head == _rx_buffer->tail)
-    {
-        return -1;
-    }
-    else
-    {
-        return _rx_buffer->buffer[_rx_buffer->tail];
-    }
-}
-
-/* copies the data from the incoming buffer into our buffer
- * Must be used if you are sure that the data is being received
- * it will copy irrespective of, if the end string is there or not
- * if the end string gets copied, it returns 1 or else 0
- * Use it either after (IsDataAvailable) or after (Wait_for) functions
+// <d3:br
+/* Look for a particular string in the given buffer
+ * @return 1, if the string is found and -1 if not found
+ * @USAGE:: if (Look_for ("some string", buffer)) do something
  */
-int Copy_upto (char *string, char *buffertocopyinto)
+int Look_for (char *str, char *buffertolookinto)
 {
-    int so_far =0;
-    int len = strlen (string);
-    int indx = 0;
-
-again:
-    while (Uart_peek() != string[so_far])
-    {
-        buffertocopyinto[indx] = _rx_buffer->buffer[_rx_buffer->tail];
-        _rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % UART_BUFFER_SIZE;
-        indx++;
-        while (!IsDataAvailable());
-
-    }
-    while (Uart_peek() == string [so_far])
-    {
-        so_far++;
-        buffertocopyinto[indx++] = Uart_read();
-        if (so_far == len) return 1;
-        timeout = TIMEOUT_DEF;
-        while ((!IsDataAvailable())&&timeout);
-        if (timeout == 0) return 0;
-    }
-
-    if (so_far != len)
-    {
-        so_far = 0;
-        goto again;
-    }
-
-    if (so_far == len) return 1;
-    else return 0;
+    // TODO
 }
-
-/* must be used after wait_for function
- * get the entered number of characters after the entered string
- */
-int Get_after (char *string, uint8_t numberofchars, char *buffertosave)
-{
-    for (int indx=0; indx<numberofchars; indx++)
-    {
-        timeout = TIMEOUT_DEF;
-        while ((!IsDataAvailable())&&timeout);  // wait until some data is available
-        if (timeout == 0) return 0;  // if data isn't available within time, then return 0
-        buffertosave[indx] = Uart_read();  // save the data into the buffer... increments the tail
-    }
-    return 1;
-}
-
-/* Waits for a particular string to arrive in the incoming buffer... It also increments the tail
- * returns 1, if the string is detected
- */
-// added timeout feature so the function won't block the processing of the other functions
-int Wait_for (char *string)
-{
-    int so_far =0;
-    int len = strlen (string);
-
-again:
-    timeout = TIMEOUT_DEF;
-    while ((!IsDataAvailable())&&timeout);  // let's wait for the data to show up
-    if (timeout == 0) return 0;
-    while (Uart_peek() != string[so_far])  // peek in the rx_buffer to see if we get the string
-    {
-        if (_rx_buffer->tail != _rx_buffer->head)
-        {
-            _rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % UART_BUFFER_SIZE;  // increment the tail
-        }
-
-        else
-        {
-            return 0;
-        }
-    }
-    while (Uart_peek() == string [so_far]) // if we got the first letter of the string
-    {
-        // now we will peek for the other letters too
-        so_far++;
-        _rx_buffer->tail = (unsigned int)(_rx_buffer->tail + 1) % UART_BUFFER_SIZE;  // increment the tail
-        if (so_far == len) return 1;
-        timeout = TIMEOUT_DEF;
-        while ((!IsDataAvailable())&&timeout);
-        if (timeout == 0) return 0;
-    }
-
-    if (so_far != len)
-    {
-        so_far = 0;
-        goto again;
-    }
-
-    if (so_far == len) return 1;
-    else return 0;
-}
+// re:d3>
 
 
 
-
-void Uart_isr (UART_HandleTypeDef *huart)
-{
-    uint32_t isrflags   = READ_REG(huart->Instance->SR);
-    uint32_t cr1its     = READ_REG(huart->Instance->CR1);
-
-    /* if DR is not empty and the Rx Int is enabled */
-    if (((isrflags & USART_SR_RXNE) != RESET) && ((cr1its & USART_CR1_RXNEIE) != RESET))
-    {
-        /******************
-         *  @note   PE (Parity error), FE (Framing error), NE (Noise error), ORE (Overrun
-         *          error) and IDLE (Idle line detected) flags are cleared by software
-         *          sequence: a read operation to USART_SR register followed by a read
-         *          operation to USART_DR register.
-         * @note   RXNE flag can be also cleared by a read to the USART_DR register.
-         * @note   TC flag can be also cleared by software sequence: a read operation to
-         *          USART_SR register followed by a write operation to USART_DR register.
-         * @note   TXE flag is cleared only by a write to the USART_DR register.
-
-         *********************/
-        huart->Instance->SR;                       /* Read status register */
-        unsigned char c = huart->Instance->DR;     /* Read data register */
-        store_char (c, _rx_buffer);  // store data in buffer
-        return;
-    }
-
-    /*If interrupt is caused due to Transmit Data Register Empty */
-    if (((isrflags & USART_SR_TXE) != RESET) && ((cr1its & USART_CR1_TXEIE) != RESET))
-    {
-        if(tx_buffer.head == tx_buffer.tail)
-        {
-            // Buffer empty, so disable interrupts
-            __HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
-
-        }
-
-        else
-        {
-            // There is more data in the output buffer. Send the next byte
-            unsigned char c = tx_buffer.buffer[tx_buffer.tail];
-            tx_buffer.tail = (tx_buffer.tail + 1) % UART_BUFFER_SIZE;
-
-            /******************
-             *  @note   PE (Parity error), FE (Framing error), NE (Noise error), ORE (Overrun
-             *          error) and IDLE (Idle line detected) flags are cleared by software
-             *          sequence: a read operation to USART_SR register followed by a read
-             *          operation to USART_DR register.
-             * @note   RXNE flag can be also cleared by a read to the USART_DR register.
-             * @note   TC flag can be also cleared by software sequence: a read operation to
-             *          USART_SR register followed by a write operation to USART_DR register.
-             * @note   TXE flag is cleared only by a write to the USART_DR register.
-
-             *********************/
-
-            huart->Instance->SR;
-            huart->Instance->DR = c;
-
-        }
-        return;
-    }
-}
-
-
-/*** Deprecated For now. This is not needed, try using other functions to meet the requirement ***/
-/*
-   uint16_t Get_position (char *string)
-   {
-   static uint8_t so_far;
-   uint16_t counter;
-   int len = strlen (string);
-   if (_rx_buffer->tail>_rx_buffer->head)
-   {
-   if (Uart_read() == string[so_far])
-   {
-   counter=UART_BUFFER_SIZE-1;
-   so_far++;
-   }
-   else so_far=0;
-   }
-   unsigned int start = _rx_buffer->tail;
-   unsigned int end = _rx_buffer->head;
-   for (unsigned int i=start; i<end; i++)
-   {
-   if (Uart_read() == string[so_far])
-   {
-   counter=i;
-   so_far++;
-   }
-   else so_far =0;
-   }
-
-   if (so_far == len)
-   {
-   so_far =0;
-   return counter;
-   }
-   else return -1;
-   }
-
-
-   void Get_string (char *buffer)
-   {
-   int index=0;
-
-   while (_rx_buffer->tail>_rx_buffer->head)
-   {
-   if ((_rx_buffer->buffer[_rx_buffer->head-1] == '\n')||((_rx_buffer->head == 0) && (_rx_buffer->buffer[UART_BUFFER_SIZE-1] == '\n')))
-   {
-   buffer[index] = Uart_read();
-   index++;
-   }
-   }
-   unsigned int start = _rx_buffer->tail;
-   unsigned int end = (_rx_buffer->head);
-   if ((_rx_buffer->buffer[end-1] == '\n'))
-   {
-
-   for (unsigned int i=start; i<end; i++)
-   {
-   buffer[index] = Uart_read();
-   index++;
-   }
-   }
-   }
-   */
