@@ -43,16 +43,17 @@ void Ringbuf_init(void)
     _rx_buffer = &rx_buffer;
     _tx_buffer = &tx_buffer;
 
+    //<test1: need to check all flags
     if (__HAL_UART_GET_FLAG(huart, UART_FLAG_FE) ||
             __HAL_UART_GET_FLAG(huart, UART_FLAG_NE) ||
             __HAL_UART_GET_FLAG(huart, UART_FLAG_ORE)) {
 
-        // Clear error flags and reset the buffer
         __HAL_UART_CLEAR_FLAG(huart, UART_FLAG_FE | UART_FLAG_NE | UART_FLAG_ORE);
-        Ringbuf_reset(_rx_buffer);  // Reset only the receive buffer
+        Ringbuf_reset(_rx_buffer); 
 
         if (uart == NULL) return;
     }
+    //:test1>
 
 
     /* Enable the UART Error Interrupt: (Frame error, noise error, overrun error) */
@@ -89,58 +90,54 @@ static void Ringbuf_reset(ring_buffer *buffer)
 /* checks if the entered string is present in the given buffer */
 static int check_for(char *str, char *buffinder)
 {
-    int slen = strlen(str);       // Length of the string to find
-    int blen = strlen(buffinder); // Length of the buffer
-    int so_far = 0;               // Number of characters matched so far
-    int indx = 0;                 // Current index in the buffer
+    int slen   = strlen(str);       // length of the string to find
+    int blen   = strlen(buffinder); // length of the buffer
+    int so_far = 0;                 // number of characters matched so far
+    int indx   = 0;                 // current index in the buffer
 
 repeat:
-    while (str[so_far] != buffinder[indx]) // Look for the start of the match
+    while (str[so_far] != buffinder[indx]) 
     {
         indx++;
-        if (indx >= blen) return -1; // If we reached the end of the buffer, the string is not found
+        if (indx >= blen) return -1;
     }
 
     if (str[so_far] == buffinder[indx])
     {
-        while (str[so_far] == buffinder[indx]) // Try to match the entire string
+        while (str[so_far] == buffinder[indx])
         {
             so_far++;
             indx++;
-            if (so_far == slen) return 1; // String found
+            if (so_far == slen) return 1;
         }
     }
 
     if (indx < blen)
     {
-        so_far = 0; // If the string was not found, start from the next index
-        goto repeat; // Repeat the process from the new position in the buffer
+        so_far = 0;  
+        goto repeat;
     }
 
-    return -1; // If the string is not found
+    return -1;
 }
 
 
 
 int Uart_read(void)
 {
-    // If the head isn't ahead of the tail, there are no characters available
+    // if the head isn't ahead of the tail, we don't have any characters
     if (_rx_buffer->head == _rx_buffer->tail)
     {
-        return -1; // No data available
+        return -1;
     }
     else
     {
-        // Read the data from the buffer at the tail position
         unsigned char c = _rx_buffer->buffer[_rx_buffer->tail];
-
-        // Increment the tail index, wrapping around if necessary
         _rx_buffer->tail = (_rx_buffer->tail + 1) % UART_BUFFER_SIZE;
-
-        // Return the read character
         return c;
     }
 }
+
 
 /* schema of the ring buffer:
  *
@@ -159,21 +156,21 @@ int Uart_read(void)
  *       
  *                _rx_buffer
  *
- * After reaching the end of the buffer (512), the pointers wrap back to the beginning (0).
+ * after reaching the end of the buffer (512), the pointers wrap back to the beginning (0).
  *
  */
 /* writes a single character to the uart and increments head */
 void Uart_write(int c)
 {
-    if (c < 0 || c > 255) return; // Validate input
+    if (c < 0 || c > 255) return;
 
     // calculate the new value of head
     int i = (unsigned int)(_tx_buffer->head + 1) % UART_BUFFER_SIZE;
 
-    while (i == _tx_buffer->tail);  // Wait if the buffer is full
+    while (i == _tx_buffer->tail);  // wait if the buffer is full
 
     // variation 1: timeout mechanism
-    //    uint32_t start_time = HAL_GetTick(); // Start time
+    //    uint32_t start_time = HAL_GetTick(); // start time
     //    while (i == _tx_buffer->tail)
     //    {
     //        if ((HAL_GetTick() - start_time) > TIMEOUT_DEF)
@@ -190,23 +187,25 @@ void Uart_write(int c)
     //    }
 
     // store the character in the buffer
-    _tx_buffer->buffer[_tx_buffer->head] = (uint8_t)c;    // Write character
+    _tx_buffer->buffer[_tx_buffer->head] = (uint8_t)c;
 
     // update the head pointer
     _tx_buffer->head = i;
 
 
-    __HAL_UART_ENABLE_IT(uart, UART_IT_TXE); // Enable UART transmission interrupt
+    __HAL_UART_ENABLE_IT(uart, UART_IT_TXE);
 
 }
+
 
 // <d1:br
 //int IsTxBufferFull(void)
 //{
 //    int next_head = (_tx_buffer->head + 1) % UART_BUFFER_SIZE;
-//    return (next_head == _tx_buffer->tail); // Returns 1 if full, 0 otherwise
+//    return (next_head == _tx_buffer->tail); // returns 1 if full, 0 otherwise
 //}
 // re:d1>
+
 
 /* sends the string to the uart */
 void Uart_sendstring (const char *s)
@@ -221,42 +220,39 @@ void Uart_sendstring (const char *s)
     //}
     //else
     //{
-    //    // Handle the case where the TX buffer is full
+    //    // handle the case where the TX buffer is full
     //}
     // ie:d1>
 }
+
 
 // <d2:br
 /* Print a number with any base, base can be 10, 8 etc */
 void Uart_printbase(long n, uint8_t base)
 {
-    if (base < 2 || base > 36) return;  // Invalid base
+    if (base < 2 || base > 36) return;  // invalid base
 
-    char buffer[33];        // Enough to store a 32-bit number in binary (plus null terminator)
+    char buffer[33];        // store a 32-bit
     char *ptr = &buffer[sizeof(buffer) - 1];
-    *ptr = '\0';            // Null terminator for the string
+    *ptr = '\0';        
 
     // Handle negative numbers (only for base 10)
     int8_t    is_negative   = (n < 0 && base == 10);
     uint32_t  abs_value     = (n < 0) ? -n : n;
 
-    // Convert number to the given base
-    do
+    do      // convert number to the given base
     {
         uint32_t remainder = abs_value % base;
-        *--ptr = (remainder < 10) ? (remainder + '0') : (remainder - 10 + 'A'); // Handle 0-9 and A-Z
+        *--ptr = (remainder < 10) ? (remainder + '0') : (remainder - 10 + 'A'); // handle 0-9 and A-Z
         abs_value /= base;
     } while (abs_value > 0);
 
-    // Add negative sign if needed
-    if (is_negative)
-    {
-        *--ptr = '-';
-    }
+    if (is_negative) *--ptr='-';
 
-    Uart_sendstring(ptr);   // Send string via UART
+    Uart_sendstring(ptr);
 }
 // re:d2>
+
 
 /* checks if the new data is available in the incoming buffer */
 int IsDataAvailable(void)
@@ -264,8 +260,9 @@ int IsDataAvailable(void)
     return (uint16_t)(UART_BUFFER_SIZE + _rx_buffer->head - _rx_buffer->tail) % UART_BUFFER_SIZE;
 }
 
+
 // <d3:br
-/* Look for a particular string in the given buffer */
+/* look for a particular string in the given buffer */
 int Look_for (char *str, char *buffer)
 {
     static uint16_t i = 0;
@@ -281,26 +278,27 @@ int Look_for (char *str, char *buffer)
         in_search = 1;
     }
 
-    // Look for the string in the buffer
+    // look for the string in the buffer
     for (; buffer[i] != '\0'; i++)
     {
-        int j = 0;
-        // Compare characters until we match all characters of the string
-        while (str[j] != '\0' && buffer[i + j] == str[j])
-        {
-            j++;
-        }
-
+        int j = 0;                                                // example:
+        while (str[j] != '\0' && buffer[i+j] == str[j]) { j++; }  //  buffer="hel lo world'\0'"
+                                                                  //  str="hel'\0'"
+                                                                  //
+                                                                  //  buff   "hel lo world'\0'"
+                                                                  //  str --> ^^^
+                                                                  //  ---------> exit
         if (j == str_len)
         {
-            in_search = 0;  // The search is finished, string found
-            return 1;  // String found
+            in_search = 0;  // the search is finished, string found
+            return 1;     
         }
     }
 
     return -1;
 }
 // re:d3>
+
 
 /* Copies the required data from a buffer */
 void GetDataFromBuffer (char *startString, char *endString, char *buffertocopyfrom, char *buffertocopyinto)
@@ -423,6 +421,7 @@ again:
     else return 0;
 }
 
+
 /* must be used after wait_for function
  * get the entered number of characters after the entered string
  */
@@ -437,6 +436,7 @@ int Get_after (char *string, uint8_t numberofchars, char *buffertosave)
     }
     return 1;
 }
+
 
 /* Waits for a particular string to arrive in the incoming buffer... It also increments the tail
  * returns 1, if the string is detected
@@ -483,8 +483,6 @@ again:
     if (so_far == len) return 1;
     else return 0;
 }
-
-
 
 
 void Uart_isr (UART_HandleTypeDef *huart)
